@@ -41,6 +41,14 @@ class SettingsManager:
     def set_last_export_folder(self, folder: str) -> None:
         self._s.setValue("last_export_folder", folder)
 
+    def battery_capacity_mah(self) -> int:
+        """Nominal pack capacity in mAh (runtime estimation input)."""
+        v = self._s.value("battery_capacity_mah", 3300, type=int)
+        return int(v) if v else 3300
+
+    def set_battery_capacity_mah(self, mah: int) -> None:
+        self._s.setValue("battery_capacity_mah", int(mah))
+
     def window_geometry(self) -> Optional[bytes]:
         raw = self._s.value("window_geometry")
         if raw is None:

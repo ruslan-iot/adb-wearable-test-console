@@ -95,8 +95,8 @@ class TelemetryCardsPanel(QWidget):
     """
 
     RT_TOOLTIP = (
-        "3300 mAh nominal × 0.85 usable; rolling-average current first, "
-        "then instantaneous. Runtime = mAh ÷ mA."
+        "Runtime estimate uses: configured nominal battery capacity (mAh) × 0.85 usable factor, "
+        "rolling-average current first (fallback: instantaneous). Runtime = mAh ÷ mA."
     )
     ENERGY_TOOLTIP = "Auxiliary: (mAh/1000)×V. Runtime does not use Wh."
 

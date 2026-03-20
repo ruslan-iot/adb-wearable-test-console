@@ -147,13 +147,23 @@ def compute_runtime_estimate(
     current_ma: Optional[float],
     rolling_avg_ma: Optional[float],
     *,
+    nominal_capacity_mah: Optional[float] = None,
     min_current_ma: float = MIN_ESTIMATE_CURRENT_MA,
 ) -> RuntimeEstimateResult:
     """
     Build all display strings. Returns is_valid=False when core inputs missing
     or current too small (still fills energy with "--" where needed).
     """
-    eff = get_effective_capacity_mah()
+    nominal = (
+        float(nominal_capacity_mah)
+        if nominal_capacity_mah is not None
+        else NOMINAL_BATTERY_CAPACITY_MAH
+    )
+    if math.isnan(nominal) or nominal <= 0:
+        nominal = NOMINAL_BATTERY_CAPACITY_MAH
+    eff = get_effective_capacity_mah(
+        nominal_capacity_mah=nominal, usable_factor=USABLE_CAPACITY_FACTOR
+    )
 
     v = battery_voltage_v
     pct = battery_percent

@@ -10,7 +10,7 @@ from enum import Enum, auto
 from pathlib import Path
 
 from PySide6.QtCore import QCoreApplication, Qt, QTimer, Slot
-from PySide6.QtGui import QCloseEvent, QGuiApplication
+from PySide6.QtGui import QCloseEvent, QGuiApplication, QIntValidator
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -74,6 +74,7 @@ class MainWindow(QWidget):
         self._tel_worker: TelemetryWorker | None = None
         self._workflow_thread: FunctionRunnerThread | None = None
         self._last_runtime_good: tuple[RuntimeEstimateResult, float] | None = None
+        self._battery_capacity_mah: int = self._settings.battery_capacity_mah()
 
         self._build_ui()
         self._wire_signals()
@@ -137,6 +138,29 @@ class MainWindow(QWidget):
             "font-size: 10px; color: #78909c; padding: 0 2px; margin: 0;"
         )
         right_lay.addWidget(self._est_hint, stretch=0)
+
+        cap_row = QWidget()
+        cap_row.setFixedHeight(28)
+        cap_row.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        cap_lay = QHBoxLayout(cap_row)
+        cap_lay.setContentsMargins(0, 0, 0, 0)
+        cap_lay.setSpacing(8)
+        cap_lbl = QLabel("Battery capacity (mAh):")
+        cap_lbl.setStyleSheet("font-size: 10px; color: #9e9e9e;")
+        cap_lbl.setMinimumHeight(16)
+        self._cap_input = QLineEdit()
+        self._cap_input.setValidator(QIntValidator(1, 100000, self._cap_input))
+        self._cap_input.setFixedWidth(120)
+        self._cap_input.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self._cap_input.setText(str(self._battery_capacity_mah))
+        self._cap_input.setMaximumHeight(24)
+        self._cap_input.setToolTip("Nominal battery capacity used for runtime estimates.")
+        cap_lay.addWidget(cap_lbl)
+        cap_lay.addStretch(1)
+        cap_lay.addWidget(self._cap_input)
+        right_lay.addWidget(cap_row, stretch=0)
 
         status_bar = QWidget()
         status_bar.setFixedHeight(30)
@@ -312,11 +336,29 @@ class MainWindow(QWidget):
         self._btn_run_manual.clicked.connect(self._on_manual_shell)
         self._btn_copy_diag.clicked.connect(self._on_copy_diag)
         self._device_combo.currentTextChanged.connect(self._on_device_changed)
+        self._cap_input.editingFinished.connect(self._on_battery_capacity_changed)
 
     def _restore_settings(self) -> None:
         self._adb_path.setText(self._settings.adb_path())
         self._ssid.setText(self._settings.last_ssid())
         self._port_spin.setValue(self._settings.tcp_port())
+        self._battery_capacity_mah = self._settings.battery_capacity_mah()
+        if hasattr(self, "_cap_input") and self._cap_input is not None:
+            self._cap_input.setText(str(self._battery_capacity_mah))
+
+    def _on_battery_capacity_changed(self) -> None:
+        txt = self._cap_input.text().strip()
+        try:
+            v = int(txt)
+        except ValueError:
+            v = self._settings.battery_capacity_mah()
+        if v < 1:
+            v = self._settings.battery_capacity_mah()
+        if v > 100000:
+            v = 100000
+        self._battery_capacity_mah = v
+        self._settings.set_battery_capacity_mah(v)
+        self._settings.sync()
 
     def showEvent(self, event) -> None:
         super().showEvent(event)
@@ -331,6 +373,7 @@ class MainWindow(QWidget):
         self._settings.set_adb_path(self._adb_path.text().strip())
         self._settings.set_tcp_port(self._port_spin.value())
         self._settings.set_last_ssid(self._ssid.text().strip())
+        self._settings.set_battery_capacity_mah(self._battery_capacity_mah)
         self._settings.set_window_geometry(self.saveGeometry().data())
         self._settings.sync()
         event.accept()
@@ -415,6 +458,7 @@ class MainWindow(QWidget):
             sample.battery_voltage_v,
             sample.current_ma,
             sample.rolling_avg_100_ma,
+            nominal_capacity_mah=self._battery_capacity_mah,
         )
         rt = self._resolve_runtime_display(sample, fresh)
         est_rem = self._strip_about_runtime(rt.remaining_runtime)

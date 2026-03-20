@@ -163,7 +163,7 @@ Raw signed integer from sysfs is stored in CSV as `current_raw_ua` (naming legac
 
 ## 7. Runtime estimate (telemetry cards)
 
-- **Nominal** pack: **3300 mAh** × **0.85** usable factor → effective **2805 mAh** (constants in `utils/runtime_estimator.py`).
+- **Nominal** pack: configurable from the UI (**default 3300 mAh**) × **0.85** usable factor → effective **capacity × 0.85**.
 - **Runtime** uses **mAh ÷ mA** (not Wh): **rolling-average current first**, then instantaneous if rolling is unavailable or ≤1 mA.
 - **Wh** on the card is auxiliary only: `(mAh/1000) × terminal voltage`.
 - Sub-**1 mA** load shows **"--"** for runtime; last valid estimate is held **~5 s** if SOC is still present (glitch smoothing).
